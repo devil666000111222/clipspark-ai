@@ -1,6 +1,130 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ClipSpark AI</title><style>
-*{box-sizing:border-box}body{margin:0;background:#090b16;color:#f6f7ff;font:15px/1.5 system-ui,Arial;background-image:radial-gradient(ellipse at 80% 0,#30245b,transparent 40%)}header,main{max-width:950px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;font-weight:900;font-size:21px}.logo span{color:#a78bfa}.pill{font-size:11px;border:1px solid #55448a;border-radius:30px;padding:6px 10px;color:#d8ceff}h1{font-size:clamp(36px,7vw,60px);line-height:1.05;letter-spacing:-2px;text-align:center;margin:40px 0 12px}h1 span{background:linear-gradient(90deg,#b49cff,#64e5ed);color:transparent;background-clip:text}.intro{text-align:center;color:#aab4cc;max-width:620px;margin:0 auto 28px}.panel{background:#12182a;border:1px solid #28324b;border-radius:20px;padding:24px}.tabs,.grid{display:flex;gap:12px}.tabs button,select,input{background:#0a1020;color:white;border:1px solid #303b58;border-radius:10px;padding:12px}.tabs button{cursor:pointer}.active{border-color:#a78bfa!important}.pane{margin:18px 0}.drop{display:block;text-align:center;border:1px dashed #68769a;border-radius:14px;padding:25px;cursor:pointer}.drop b{display:block;font-size:17px}.hint{font-size:12px;color:#94a1bd}.grid>*{flex:1;min-width:0}.field{margin:14px 0}.field label{display:block;margin-bottom:7px;font-weight:700;font-size:13px}.field select,.field input{width:100%}.btn{width:100%;border:0;border-radius:12px;padding:15px;background:linear-gradient(90deg,#b39bff,#6ce7ee);font-weight:900;font-size:15px;cursor:pointer;color:#090b16;margin-top:12px}.btn:disabled{opacity:.5}.status{color:#c0cbe0;min-height:28px;margin-top:12px;font-size:13px}.check{font-size:13px;color:#bbc5dc}.hidden{display:none}footer{text-align:center;color:#75819c;font-size:12px;padding:28px}@media(max-width:600px){.grid{flex-direction:column}.panel{padding:17px}header,main{padding:18px}}
-</style></head><body><header><div class="logo">✦ Clip<span>Spark</span> AI</div><div class="pill">ADVANCED WORKSPACE</div></header><main><h1>Turn long videos into<br><span>share-worthy clips.</span></h1><p class="intro">Find engaging moments, add captions and create vertical clips using a connected cloud video-processing service. Processing happens off your phone to reduce RAM use.</p><section class="panel"><div class="tabs"><button id="upTab" class="active">Upload video</button><button id="urlTab">Video link</button></div><div id="upPane" class="pane"><label class="drop" for="file">⬆<b id="fileName">Choose a video file</b><span class="hint">MP4, MOV or WebM</span></label><input id="file" type="file" accept="video/*" hidden></div><div id="urlPane" class="pane hidden"><div class="field"><label>Direct video URL / provider-supported source</label><input id="url" type="url" placeholder="https://example.com/video.mp4" style="width:100%"></div><p class="hint">YouTube watch links need an authorized provider workflow. A normal YouTube URL cannot be downloaded by a static Netlify page.</p></div><div class="grid"><div class="field"><label>Clip length</label><select id="length"><option>30</option><option selected>45</option><option>60</option><option>90</option></select></div><div class="field"><label>Number of clips</label><select id="count"><option>3</option><option selected>5</option><option>8</option><option>10</option></select></div></div><div class="grid"><div class="field"><label>Format</label><select id="format"><option value="9:16">Vertical 9:16</option><option value="16:9">Landscape 16:9</option><option value="1:1">Square 1:1</option></select></div><div class="field"><label>Captions</label><select id="captions"><option value="animated">Animated</option><option value="plain">Simple subtitles</option><option value="none">None</option></select></div></div><label class="check"><input id="rights" type="checkbox"> I own this video or have permission and the necessary rights to edit it.</label><button class="btn" id="go">✦ Find highlights & create clips</button><div class="status" id="status">Ready. Connect a cloud processing provider to enable AI analysis and exports.</div><div id="results"></div><p class="hint">This project includes the website and secure Netlify API bridge. AI analysis, storage and rendering require a compatible cloud provider and API credentials. Do not put secret keys in this page.</p></section></main><footer>ClipSpark AI • Advanced Netlify starter</footer><script>
-let mode='upload';const $=x=>document.getElementById(x);function setMode(m){mode=m;$('upPane').classList.toggle('hidden',m!=='upload');$('urlPane').classList.toggle('hidden',m!=='link');$('upTab').classList.toggle('active',m==='upload');$('urlTab').classList.toggle('active',m==='link')} $('upTab').onclick=()=>setMode('upload');$('urlTab').onclick=()=>setMode('link');$('file').onchange=e=>$('fileName').textContent=e.target.files[0]?.name||'Choose a video file';
-$('go').onclick=async()=>{let f=$('file').files[0],u=$('url').value.trim();if(!$('rights').checked){$('status').textContent='Please confirm you have rights to use this video.';return}if(mode==='upload'&&!f){$('status').textContent='Choose a video file first.';return}if(mode==='link'&&!u){$('status').textContent='Paste a supported video link first.';return}if(mode==='link'&&/(youtube\.com\/watch|youtu\.be\/)/i.test(u)){$('status').textContent='YouTube watch links are not directly downloadable here. Configure a provider with an authorized YouTube workflow, or upload a video file you are permitted to use.';return}let b=$('go');b.disabled=true;$('status').textContent='Submitting to cloud processor…';try{let d=new FormData();if(f)d.append('video',f);if(u)d.append('videoUrl',u);d.append('options',JSON.stringify({clipLength:+$('length').value,clipCount:+$('count').value,aspectRatio:$('format').value,captions:$('captions').value}));let r=await fetch('/.netlify/functions/create-job',{method:'POST',body:d});let j=await r.json();if(!r.ok)throw Error(j.error||'Job failed');$('status').textContent=j.message||'Job submitted. '+(j.jobId?'Job ID: '+j.jobId:'');if(j.clips?.length)$('results').innerHTML=j.clips.map((c,i)=>`<p>${c.title||'Clip '+(i+1)} — <a href="${c.url}" target="_blank" rel="noopener">Download</a></p>`).join('')}catch(e){$('status').textContent=e.message}finally{b.disabled=false}};
-</script></body></html>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClipSpark AI - Video Clipper</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101426;color:white;font-family:Arial,sans-serif;padding:22px}
+main{max-width:650px;margin:30px auto;background:#1b2340;padding:25px;border-radius:18px}
+h1{color:#8b9cff;text-align:center}
+p{color:#cbd2ed;line-height:1.5}
+input,button{width:100%;padding:13px;margin:10px 0;border-radius:9px;border:0}
+input{background:#fff;color:#111}
+button{background:#687cff;color:white;font-weight:bold;font-size:16px}
+button:disabled{opacity:.5}
+video{width:100%;margin-top:15px;border-radius:10px}
+#status{color:#9fffc4;overflow-wrap:anywhere}
+a{color:#9fffc4}
+</style>
+</head>
+<body>
+<main>
+<h1>ClipSpark AI</h1>
+<p style="text-align:center">Turn long videos into short clips.</p>
+
+<label>1. Upload your video</label>
+<input type="file" id="videoFile" accept="video/*">
+
+<video id="preview" controls hidden></video>
+
+<label>2. Clip start time (seconds)</label>
+<input type="number" id="start" value="0" min="0">
+
+<label>3. Clip end time (seconds)</label>
+<input type="number" id="end" value="30" min="1">
+
+<button id="generate">Generate MP4 Clip</button>
+
+<p id="status">Choose a video to begin.</p>
+<video id="result" controls hidden></video>
+<a id="download" hidden download="clipspark-clip.mp4">Download your MP4 clip</a>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+
+<script>
+const fileInput=document.getElementById("videoFile");
+const preview=document.getElementById("preview");
+const result=document.getElementById("result");
+const status=document.getElementById("status");
+const button=document.getElementById("generate");
+let selectedFile=null;
+let ffmpeg=null;
+let outputURL=null;
+
+fileInput.addEventListener("change",()=>{
+ selectedFile=fileInput.files[0];
+ if(!selectedFile)return;
+ preview.src=URL.createObjectURL(selectedFile);
+ preview.hidden=false;
+ status.textContent="Video ready. Choose start and end times.";
+});
+
+async function loadEngine(){
+ if(ffmpeg)return;
+ status.textContent="Loading free video processing engine. Please wait...";
+ const {FFmpeg}=FFmpegWASM;
+ const {toBlobURL}=FFmpegUtil;
+ ffmpeg=new FFmpeg();
+ const base="https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+ await ffmpeg.load({
+  coreURL:await toBlobURL(base+"/ffmpeg-core.js","text/javascript"),
+  wasmURL:await toBlobURL(base+"/ffmpeg-core.wasm","application/wasm")
+ });
+}
+
+button.addEventListener("click",async()=>{
+ if(!selectedFile){
+  status.textContent="Please upload a video first.";
+  return;
+ }
+ const start=Number(document.getElementById("start").value);
+ const end=Number(document.getElementById("end").value);
+ if(!Number.isFinite(start)||!Number.isFinite(end)||start<0||end<=start){
+  status.textContent="Please enter a valid start and end time.";
+  return;
+ }
+ button.disabled=true;
+ result.hidden=true;
+ document.getElementById("download").hidden=true;
+ try{
+  await loadEngine();
+  status.textContent="Processing your video. Please wait...";
+  const {fetchFile}=FFmpegUtil;
+  const ext=(selectedFile.name.split(".").pop()||"mp4").replace(/[^a-z0-9]/gi,"");
+  const input="input."+ext;
+  await ffmpeg.writeFile(input,await fetchFile(selectedFile));
+  await ffmpeg.exec([
+   "-ss",String(start),
+   "-i",input,
+   "-t",String(end-start),
+   "-c:v","libx264",
+   "-preset","ultrafast",
+   "-crf","28",
+   "-c:a","aac",
+   "-movflags","+faststart",
+   "output.mp4"
+  ]);
+  const data=await ffmpeg.readFile("output.mp4");
+  const blob=new Blob([data.buffer],{type:"video/mp4"});
+  if(outputURL)URL.revokeObjectURL(outputURL);
+  outputURL=URL.createObjectURL(blob);
+  result.src=outputURL;
+  result.hidden=false;
+  const link=document.getElementById("download");
+  link.href=outputURL;
+  link.hidden=false;
+  status.textContent="Your MP4 clip is ready!";
+ }catch(error){
+  status.textContent="Processing failed: "+error.message;
+ }finally{
+  button.disabled=false;
+ }
+});
+</script>
+</body>
+</html>
